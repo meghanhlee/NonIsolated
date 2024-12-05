@@ -13,6 +13,6 @@ Installation instructions:
    AttachSpec("path/to/OpenImage/OpenImage.spec");
    Attach("path/to/ell-adic-galois-images/groups/gl2.m");
    ```
-5. Download and run "notisolated.m" from https://github.com/meghanhlee/nonisolated.
+5. Download and run "NotIsolated.m" from https://github.com/meghanhlee/nonisolated.
 
 Please contact us with any questions, comments, or suggestions.
