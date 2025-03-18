@@ -1,4 +1,4 @@
-# NotIsolated
+# NonIsolated
 
 This is code associated to the preprint, [Isolated j-invariants arising from the modular curve X_0(n)](https://drive.google.com/file/d/1gGI4_JPJueaRvn_K2DodCv1Qt97zFdYs/view), by Meghan Lee.
 
