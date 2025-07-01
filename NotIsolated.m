@@ -1,11 +1,36 @@
-o/////////////////////////////////////////////////
-// All of our code was run on a machine with the
-// following specifications.
+//////////////////////////////////////////////////////////////////////////
+// All of our code was run on a machine with the following specifications.
 // CPU: Apple M1 Pro
 // Memory: 16 GB
 // OS: macOS Sonoma Version 14.2.1
 // Magma Version: V2.28-3
-/////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////
+// The intrinsics "NonSurjectivePrimes" and "ReducedLevel" were first
+// implemented by the authors of the following work:
+	// Abbey Bourdon, Sachi Hashimoto, Timo Keller, Zev Klagsbrun, David
+	// Lowry-Duda, Travis Morrison, Filip Najman, and Himanshu Shukla,
+	// Towards a classification of isolated j-invariants, Mathematics of
+	// Computation 94 (2024), no. 351, 447–473.
+// Also, the intrinsics "FilterByRiemannRoch" and "FilterOutByGenus0" are
+// modeled after the above authors.
+
+// The intrinsic "CyclicSubspaces" was first implemented by
+// Drew Sutherland in the following work:
+	// Sutherland, Andrew V. Computing images of Galois representations
+	// attached to elliptic curves. Forum Math. Sigma 4 (2016).
+
+// The intrinsic "GL2Genus" was first implemented by //Jeremy Rouse,
+// Andrew V. Sutherland, and David Zureick-Brown in the following work:
+	// Rouse, Jeremy; Sutherland, Andrew V.; Zureick-Brown, David.
+	// $\ell$-adic images of Galois for elliptic curves over $\Bbb{Q}$
+	// (and an appendix with John Voight). With an appendix with John
+	// Voight. Forum Math. Sigma 10 (2022).
+// The associated code is contained in the "ell-adic-galois-images"
+// Github repository.
+//////////////////////////////////////////////////////////////////////////
 
 
 intrinsic TransposeMatrixGroup(G::GrpMat) -> GrpMat
@@ -67,7 +92,8 @@ end intrinsic;
 intrinsic CyclicSubspaces(m::RngIntElt) -> SetEnum[ModTupRng]
 	{ Given a positive integer m,
 		return the set of all cyclic
-		modules with cardinality m. }
+		submodules of order m. }
+
 	M:=RSpace(Integers(m),2);
 
 	return {sub<M|[i,j]>:i in Divisors(m),j in [0..m-1]|GCD(i,j) eq 1};
@@ -77,7 +103,12 @@ end intrinsic;
 intrinsic GroupIsogenyDegree(H::GrpMat) -> SeqEnum[RngIntElt]
 	{ Given mod m image H, return degrees of all
 		closed points on X_0(m).
-		This function is not called in main algorithm. }
+		This function is not called in main algorithm.}
+	
+	// Note that the output of this intrinsic will appear with multiplicity;
+	// for instance, a closed point of degree 5 will correspond to output 
+		// 5, 5, 5, 5, 5
+
 	m:=#BaseRing(H);
 	H:=sub<GL(2,Integers(m))|[Transpose(h):h in Generators(H)]>;
 
@@ -104,51 +135,48 @@ intrinsic CoveringDegree(m::RngIntElt,n::RngIntElt) -> RngIntElt
 	end if;
 
 	a := m div n;
-	b := (n le 2 and m gt 2) select 1/2 else 1;
 	
 	return a*&*[Rationals()|(1 + 1/p):p in PrimeFactors(m)|n mod p ne 0];
 end intrinsic;
 
 
-intrinsic PrimitiveDegreesOfPoints(primitivepts::SeqEnum[Any], m::RngIntElt, G::GrpMat) -> SeqEnum[Tup]
-	{ Given a list to which we add primitive points, a divisor m of the
-		reduced level of E, and a mod m image G, return a set of tuples
+intrinsic PrimitiveDegreesOfPointsForFixedm(G::GrpMat, a::RngIntElt, primitivepts::SeqEnum[Any]) -> SeqEnum[Tup]
+	{ Given a mod m image G, a divisor a of the
+		reduced level of E, and a list to which we
+		add primitive points, return a set of tuples
 		<a1, d1>,  ..., <an, dn>, such that each
 		<ai, di> pair represents a degree di primitive point
-		on X_0(ai), for some divisor di of the reduced level m. }
+		associated to a closed point on X_0(a). }
 
-	if m eq 1 then
+	if a eq 1 then
 	// <1, 1> is always a primitive deg 1 point on X_0(1).
 		Append(~primitivepts, <1, 1>);
 		return primitivepts;
 	end if;
 
-	GensG := Generators(G);
-	R := RSpace(Integers(m),2);
-	Gmodm := ChangeRing(G, Integers(m));
-	Gt := TransposeMatrixGroup(Gmodm);
+	Gmoda := ChangeRing(G, Integers(a));
+	Gt := TransposeMatrixGroup(Gmoda);
 
-	H := sub<GL(2,Integers(m))|Gt,-Gt!1>;
-	C:=SetToIndexedSet(CyclicSubspaces(m));
+	C:=SetToIndexedSet(CyclicSubspaces(a));
 	
-	// for-loop through each cyclic subspace of order m.
+	// for-loop through each cyclic subspace of order a.
 	for v in C do
-		degx := #Orbit(H,v);
+		degx := #Orbit(Gt,v);
 		
 		i := 1;
 
-		while i le #Divisors(m) do
+		while i le #Divisors(a) do
 			// 1 is the first entry in the list of divisors so this while-loop
 			// always checks the degree condition on X_0(1) first.
 			if i eq 1 then
-				ai := Divisors(m)[i]; // a1 = 1
-				degf1 := CoveringDegree(m, 1);
+				ai := Divisors(a)[i]; // ai = 1
+				degf1 := CoveringDegree(a, 1);
 
 				// note degx1 = 1 since we have rational j-invariant.
 				if degx eq degf1 then
 						Append(~primitivepts, <ai, 1>);
 						// degree condition met so continue to next v in C.
-						i := #Divisors(m)+1;
+						i := #Divisors(a)+1;
 
 				elif degx ne degf1 then
 					// degree condition not met, continue to next divisor.
@@ -156,19 +184,19 @@ intrinsic PrimitiveDegreesOfPoints(primitivepts::SeqEnum[Any], m::RngIntElt, G::
 				end if;
 			end if;
 
-			// i = #Divisors(m)+1 is used to break the while-loop
+			// i = #Divisors(a)+1 is used to break the while-loop
 			// and continue to the next v in C.
-			if i eq #Divisors(m)+1 then
+			if i eq #Divisors(a)+1 then
 				break;
 			end if;
 
-        		ai := Divisors(m)[i];
-			degfi := CoveringDegree(m, ai);
+        	ai := Divisors(a)[i];
+			degfi := CoveringDegree(a, ai);
 			
 			// K is the module Z/aiZ^{(2)},
 			// consisting of all 2-tuples over Z/aiZ.
 			K := RSpace(Integers(ai),2);
-			HmodAi := ChangeRing(H, Integers(ai));
+			HmodAi := ChangeRing(Gt, Integers(ai));
 			
 			// to compute the degree of the image xi on X_0(ai), we now need the
 			// subspace of K generated by the generator of v (mod ai).
@@ -178,13 +206,17 @@ intrinsic PrimitiveDegreesOfPoints(primitivepts::SeqEnum[Any], m::RngIntElt, G::
 
 			// if the degree di of the image of the point on X_0(ai) is as large as possible:
 			if degx eq degfi * degxi then
+   				// ai is the smallest such divisor of a because Divisors(a) is ordered so that
+       				// a1 <= a2 <=...
 				Append(~primitivepts, <ai,degxi>);
-				i := #Divisors(m)+1;
+				i := #Divisors(a)+1;
+            
+            // if ai = m itself, then the point x is its own primitive point:
+			elif i eq #Divisors(a) then
+				Append(~primitivepts, <Divisors(a)[i],degx>);
+				i := #Divisors(a)+1;
 
-			elif i eq #Divisors(m) then
-				Append(~primitivepts, <Divisors(m)[i],degx>);
-				i := #Divisors(m)+1;
-			elif i ne #Divisors(m) then
+			elif i ne #Divisors(a) then
 				// check the next largest divisor of m
 				i +:= 1;
 
@@ -194,12 +226,32 @@ intrinsic PrimitiveDegreesOfPoints(primitivepts::SeqEnum[Any], m::RngIntElt, G::
 	return primitivepts;
 end intrinsic;
 
+
+intrinsic PrimitiveDegreesOfPoints(G0::GrpMat) -> SetEnum[Tup]
+    { Given a mod m0 image, where m0 denotes the reduced level of a
+     non-CM elliptic curve E/Q, return the list of primitive points of E. }
+
+    // Note that the output of this intrinsic is not recorded with multiplicity. That is,
+    // if there are 2 or more primitive points of degree d on X_0(a), the pair
+        // <a, d>
+    // only appears once in the output.
+
+	primitiveptsset := {};
+    m := Modulus(BaseRing(TransposeMatrixGroup(G0)));
+    
+	for a in Divisors(m) do
+		primitivepts := [];
+		for pair in PrimitiveDegreesOfPointsForFixedm(G0, a, primitivepts) do
+			Include(~primitiveptsset, pair);
+		end for;
+	end for;
+    return primitiveptsset;
+end intrinsic;
+
+
 intrinsic FilterByRiemannRoch(primitivepts::SeqEnum[Tup]) -> SeqEnum[Tup]
-	{ Given multiset of elements of the form
-		<a1, d1>,  ... , <an, dn>,
-		return those such that di is
-		greater than genus(X_0(ai))
-		for some i. }
+	{ Given multiset of elements of the form <a1, d1>,  ... , <an, dn>,
+	 return those such that di is less than or equal to genus(X_0(a_i)). }
 
 	A := AssociativeArray();
 
@@ -234,44 +286,7 @@ intrinsic FilterByRiemannRoch(primitivepts::SeqEnum[Tup]) -> SeqEnum[Tup]
 	return returnlist;
 end intrinsic;
 
-intrinsic PrintCount(points::SeqEnum[Tup]) -> MonStgElt
-	{ Helper function to read multiplicities
-		to read output from FilterByRiemannRoch and
-		PrimitiveDegreesOfPoints.
-		This function is not called in
-		our main algorithm. }
-
-    	multiplicity := AssociativeArray();
-	str := "";
-
-	if #points eq 0 then
-		str cat:=("All points are non-isolated.");
-		return str;
-	end if;
-		
-	for tuple in points do
-		if IsDefined(multiplicity, tuple) then
-			multiplicity[tuple] +:= 1;
-		else
-			multiplicity[tuple] := 1;
-		end if;
-	end for;
-
-	// For reading the results
-	counts := [];
-	for key in Keys(multiplicity) do
-		Append(~counts, <key, multiplicity[key]>);
-	end for;
-
-    	for entry in counts do
-        	key := entry[1];
-        	count := entry[2];
-        	str cat:= Sprintf("<%o, %o>^%o\n", key[1], key[2], count);
-    	end for;
-    	return str;
-end intrinsic;
-
-intrinsic NotIsolated(j::FldRatElt, path::Assoc : ainvs :=[]) -> List
+intrinsic NonIsolated(j::FldRatElt, path::Assoc : ainvs :=[]) -> List
 	{ Main function to check if a rational
 		j-invariant is isolated. }
 
@@ -295,11 +310,12 @@ intrinsic NotIsolated(j::FldRatElt, path::Assoc : ainvs :=[]) -> List
 		for point in possibleisolated do
 			ai, di := Explode(point);
 			Gmodai := ChangeRing(G,Integers(ai));
+			// GL2Genus(H) computes the genus of the modular curve X_H
+			// for H in GL(2, Z/NZ)
 			if GL2Genus(Gmodai) ne 0 then
 				Include(~S, point);
 			end if;
 		end for;
-
 		return S;
 	end function;
 
@@ -311,18 +327,10 @@ intrinsic NotIsolated(j::FldRatElt, path::Assoc : ainvs :=[]) -> List
 	end if;
 
 	G0 := ChangeRing(G,Integers(m0));
-	m := Modulus(BaseRing(TransposeMatrixGroup(G0)));
-	possibleisolated := {};
-	
-	for a in Divisors(m) do
-		primitivepts := [];
-		for pair in PrimitiveDegreesOfPoints(primitivepts, a, G0) do
-			Include(~possibleisolated, pair);
-		end for;
-	end for;
-
+    possibleisolated := PrimitiveDegreesOfPoints(G0);
 	possibleisolated := SetToIndexedSet(possibleisolated);
 	possibleisolated := IndexedSetToSequence(possibleisolated);
+
 	possibleisolatedfilter1 := FilterByRiemannRoch(possibleisolated);
 
 	if #possibleisolatedfilter1 gt 0 then
