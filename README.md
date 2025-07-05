@@ -1,6 +1,6 @@
 # NonIsolated
 
-This is code associated to the preprint, [Isolated j-invariants arising from the modular curve X_0(n)](https://drive.google.com/file/d/1gGI4_JPJueaRvn_K2DodCv1Qt97zFdYs/view), by Meghan Lee.
+This is code associated to the work, [Isolated j-invariants arising from the modular curve X_0(n)](https://drive.google.com/file/d/1gGI4_JPJueaRvn_K2DodCv1Qt97zFdYs/view), by Meghan Lee.
 
 The main function is 'NonIsolated', which given a non-CM, rational j-invariant, outputs a list <a_1, d_1>, ..., <a_n, d_n> of (level, degree) pairs which each correspond to a point of degree d_i on X_0(a_i) that is possibly isolated, and otherwise outputs an empty list if it determines that the j-invariant is not isolated. For some non-CM elliptic curve with the given j-invariant, we can compute a finite set of "primitive points" that is described in Section 5 in the paper, using the function 'PrimitiveDegreesOfPoints'. 
 
